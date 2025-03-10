@@ -6,12 +6,16 @@ interface FooterProps {
   activeCount: number;
   currentFilter: Filter;
   setCurrentFilter: (filter: Filter) => void;
+  hasCompleted: boolean;
+  deleteCompletedTodos: () => void;
 }
 
 export const Footer: React.FC<FooterProps> = ({
   activeCount,
   currentFilter,
   setCurrentFilter,
+  hasCompleted,
+  deleteCompletedTodos,
 }) => {
   return (
     <footer className="todoapp__footer" data-cy="Footer">
@@ -40,8 +44,12 @@ export const Footer: React.FC<FooterProps> = ({
 
       <button
         type="button"
-        className="todoapp__clear-completed"
+        className={cn('todoapp__clear-completed', {
+          disabled: !hasCompleted,
+        })}
         data-cy="ClearCompletedButton"
+        disabled={!hasCompleted}
+        onClick={deleteCompletedTodos}
       >
         Clear completed
       </button>

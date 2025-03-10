@@ -16,6 +16,8 @@ export const App: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [currentFilter, setCurrentFilter] = useState<Filter>(Filter.All);
   const [tempTodo, setTempTodo] = useState<Todo | null>(null);
+  const [title, setTitle] = useState<string>('');
+  const [deletingTodoIds, setDeletingTodoIds] = useState<number[]>([]);
 
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -73,8 +75,32 @@ export const App: React.FC = () => {
     [todoList, currentFilter],
   );
 
-  const addTodo = ({ title, userId, completed }: Todo) => {
-    const trimmedTitle = title.trim();
+  const hasCompleted = todoList.some(todo => todo.completed);
+
+  const deleteCompletedTodos = () => {
+    const completedTodos = todoList.filter(todo => todo.completed);
+
+    Promise.allSettled(
+      completedTodos.map(todo => apiService.deleteTodo(todo.id)),
+    ).then(results => {
+      const failedIds = completedTodos
+        .filter((_, index) => results[index].status === 'rejected')
+        .map(todo => todo.id);
+
+      setTodoList(prev =>
+        prev.filter(todo => !todo.completed || failedIds.includes(todo.id)),
+      );
+
+      inputRef.current?.focus();
+
+      if (failedIds.length > 0) {
+        setErrorMessage('Unable to delete a todo');
+      }
+    });
+  };
+
+  const addTodo = ({ title: todoTitle, userId, completed }: Todo) => {
+    const trimmedTitle = todoTitle.trim();
 
     if (!trimmedTitle) {
       setErrorMessage('Title cannot be empty');
@@ -84,7 +110,7 @@ export const App: React.FC = () => {
 
     const newTempTodo: Todo = {
       id: Date.now(),
-      title,
+      title: todoTitle,
       userId,
       completed,
     };
@@ -96,27 +122,44 @@ export const App: React.FC = () => {
       .addTodo({ title: trimmedTitle, userId, completed })
       .then(newTodo => {
         setTodoList(currentTodos => [...currentTodos, newTodo]);
+        setTitle('');
         inputRef.current?.focus();
       })
       .catch(() => {
-        setErrorMessage('Unable to add todo');
+        setErrorMessage('Unable to add a todo');
+        inputRef.current?.focus();
       })
       .finally(() => {
         setTempTodo(null);
       });
   };
 
-  const deleteTodo = (todoId: number) => {
-    apiService
-      .deleteTodo(todoId)
-      .then(() => {
-        setTodoList(currentTodos =>
-          currentTodos.filter(todo => todo.id !== todoId),
-        );
-      })
-      .catch(() => {
-        setErrorMessage('Unable to delete todo');
-      });
+  const deleteTodo = async (todoId: number) => {
+    setDeletingTodoIds(prev => [...prev, todoId]);
+
+    const todoToDelete = todoList.find(todo => todo.id === todoId);
+
+    if (!todoToDelete) {
+      return;
+    }
+
+    setTempTodo(todoToDelete);
+
+    try {
+      await apiService.deleteTodo(todoId);
+
+      setTodoList(currentTodos =>
+        currentTodos.filter(todo => todo.id !== todoId),
+      );
+    } catch (error) {
+      setErrorMessage('Unable to delete a todo');
+    } finally {
+      setTempTodo(null);
+      setDeletingTodoIds(prev =>
+        prev.filter(deletingId => deletingId !== todoId),
+      );
+      inputRef.current?.focus();
+    }
   };
 
   if (!apiService.USER_ID) {
@@ -132,6 +175,8 @@ export const App: React.FC = () => {
           addTodo={addTodo}
           setErrorMessage={setErrorMessage}
           inputRef={inputRef}
+          title={title}
+          setTitle={setTitle}
         />
 
         {!loading && todoList.length > 0 && (
@@ -140,11 +185,14 @@ export const App: React.FC = () => {
               todos={filteredTodosList}
               deleteTodo={deleteTodo}
               tempTodo={tempTodo}
+              deletingTodoIds={deletingTodoIds}
             />
             <Footer
               activeCount={activeTodosCount}
               currentFilter={currentFilter}
               setCurrentFilter={setCurrentFilter}
+              hasCompleted={hasCompleted}
+              deleteCompletedTodos={deleteCompletedTodos}
             />
           </>
         )}

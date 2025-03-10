@@ -7,6 +7,7 @@ interface TodoItemProps {
   onToggle: (id: number) => void;
   onDelete: (todoId: number) => void;
   isTemporary?: boolean;
+  isDeleting?: boolean;
 }
 
 export const TodoItem: React.FC<TodoItemProps> = ({
@@ -14,6 +15,7 @@ export const TodoItem: React.FC<TodoItemProps> = ({
   onToggle,
   onDelete,
   isTemporary = false,
+  isDeleting = false,
 }) => {
   const handleCheckboxChange = () => {
     onToggle(id);
@@ -30,7 +32,7 @@ export const TodoItem: React.FC<TodoItemProps> = ({
           className="todo__status"
           checked={completed}
           onChange={handleCheckboxChange}
-          disabled={isTemporary}
+          disabled={isTemporary || isDeleting}
         />
       </label>
       <span className="todo__title" data-cy="TodoTitle">
@@ -41,14 +43,14 @@ export const TodoItem: React.FC<TodoItemProps> = ({
         className="todo__remove"
         data-cy="TodoDelete"
         onClick={() => onDelete(id)}
-        disabled={isTemporary}
+        disabled={isTemporary || isDeleting}
       >
         ×
       </button>
       <div
         data-cy="TodoLoader"
         className={cn('modal overlay', {
-          'is-active': isTemporary,
+          'is-active': isTemporary || isDeleting,
         })}
       >
         <div className="modal-background has-background-white-ter" />

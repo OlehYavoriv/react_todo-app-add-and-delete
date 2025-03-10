@@ -9,8 +9,9 @@ export const Header: React.FC<{
   }) => void;
   setErrorMessage: (message: string | null) => void;
   inputRef: React.RefObject<HTMLInputElement>;
-}> = ({ addTodo, setErrorMessage, inputRef }) => {
-  const [title, setTitle] = useState('');
+  title: string;
+  setTitle: (value: string) => void;
+}> = ({ addTodo, setErrorMessage, inputRef, title, setTitle }) => {
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = (event: React.FormEvent) => {
@@ -27,7 +28,6 @@ export const Header: React.FC<{
     addTodo({ title, userId: apiService.USER_ID, completed: false });
 
     setTimeout(() => {
-      setTitle('');
       setLoading(false);
     }, 100);
   };
